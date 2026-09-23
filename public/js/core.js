@@ -93,9 +93,11 @@ nav.top{display:flex;align-items:center;justify-content:space-between;gap:var(--
 .links{display:flex;gap:var(--s4);color:var(--ink-muted)}
 @media(max-width:700px){.links{display:none}}
 .btnw{display:inline-flex;flex-direction:column;gap:5px;vertical-align:top}
-.btn{appearance:none;border:0;cursor:pointer;background:var(--action);color:var(--action-ink);font:600 15px/20px var(--f-label);letter-spacing:var(--l-track);text-transform:var(--l-case);padding:var(--s3) var(--s4);min-height:48px}
+.btn{appearance:none;border:0;cursor:pointer;background:var(--action);color:var(--action-ink);font:600 15px/20px var(--f-label);letter-spacing:var(--l-track);text-transform:var(--l-case);padding:var(--s3) var(--s4);min-height:48px;transition:filter .15s ease}
 .btn.sec{background:var(--surface-2);color:var(--ink)}
+.btn:hover{filter:brightness(.9)}
 .btn:focus{outline:none}
+.go{transition:color .15s ease}.go:hover{text-decoration:underline}
 .btnw .ln.f{visibility:hidden;--line:var(--ink)}
 .btnw:focus-within .ln.f{visibility:visible}
 .hero{position:relative;padding:var(--s6) 0}
