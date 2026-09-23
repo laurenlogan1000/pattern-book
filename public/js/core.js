@@ -105,15 +105,23 @@ nav.top{display:flex;align-items:center;justify-content:space-between;gap:var(--
 .hero .sub{font-size:calc(var(--b-size) * 1.15);color:var(--ink-muted);margin-top:var(--s4)}
 .hero .acts{display:flex;flex-wrap:wrap;gap:var(--s3);margin-top:var(--s5);align-items:flex-start}
 .k1{background:var(--fill-1)}.k2{background:var(--fill-2)}.k3{background:var(--fill-3)}.k4{background:var(--fill-4)}.ka{background:var(--action)}
-.blk,.side i,.band i,.opening i,.sw i{position:relative;overflow:hidden;display:block}
+.blk,.side,.band-ph,.sw-ph,.opening i{position:relative;overflow:hidden;display:block}
+.artph{position:relative;display:block;width:100%;height:100%;background:var(--surface-2)}
+.artx{position:absolute;inset:0;width:100%;height:100%;display:block}
+.artx line{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke;opacity:.4}
+.arti{position:absolute;top:50%;left:50%;width:15%;min-width:20px;max-width:34px;height:auto;transform:translate(-50%,-50%);opacity:.5}
+.arti rect,.arti path{fill:none;stroke:var(--line);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.arti circle{fill:var(--line)}
+.artdots{position:absolute;bottom:var(--s3);left:50%;transform:translateX(-50%);display:flex;gap:6px}
+.artdots i{width:6px;height:6px;background:var(--line);opacity:.35;display:block;border-radius:50%}
+.artdots i.on{opacity:.85}
 .h-centered{text-align:center}
 .h-centered .mid{position:relative;z-index:1;max-width:calc(780px + 2 * clamp(40px,11vw,150px));margin:0 auto;padding:var(--s5) calc(clamp(40px,11vw,150px) + var(--s4))}
 @media(max-width:760px){.h-centered .mid{padding:0}}
 .h-centered .sub{margin-left:auto;margin-right:auto}.h-centered .acts{justify-content:center}
-.h-centered .side{position:absolute;top:0;bottom:0;width:clamp(40px,11vw,150px);display:flex;flex-direction:column}
+.h-centered .side{position:absolute;top:0;bottom:0;width:clamp(40px,11vw,150px)}
 .h-centered .side.l{left:var(--s5)}.h-centered .side.r{right:var(--s5)}
 @media(max-width:640px){.h-centered .side.l{left:var(--s4)}.h-centered .side.r{right:var(--s4)}}
-.side .k1{flex:5}.side .k2{flex:3}.side .k3{flex:2}.side .k4{flex:1}
 @media(max-width:760px){.h-centered .side{display:none}}
 .h-offset .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:var(--s4);align-items:end}
 .h-offset .t{grid-column:1/10;grid-row:1}.h-offset .aside{grid-column:7/13;grid-row:2}
@@ -122,10 +130,9 @@ nav.top{display:flex;align-items:center;justify-content:space-between;gap:var(--
 .h-stacked h1{font-size:clamp(52px,12vw,calc(var(--d-size) * 1.3))}
 .h-stacked .ln{margin-top:var(--s4)}
 .h-stacked .row3{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:var(--s5);margin-top:var(--s4);align-items:start}
-.h-stacked .sw{display:flex;gap:var(--s2)}.h-stacked .sw i{flex:1;height:84px}
+.h-stacked .sw-ph{height:140px}
 @media(max-width:760px){.h-stacked .row3{grid-template-columns:1fr}}
-.h-banded .band{display:flex;gap:var(--s2);height:clamp(96px,16vw,180px);margin-bottom:var(--s5)}
-.h-banded .band .k1{flex:4}.h-banded .band .k2{flex:2}.h-banded .band .k3{flex:3}.h-banded .band .k4{flex:1}
+.h-banded .band-ph{height:clamp(96px,16vw,180px);margin-bottom:var(--s5)}
 section{padding:var(--s6) 0 0}
 .sec-h{display:flex;flex-direction:column;gap:var(--s3);margin-bottom:var(--s5)}
 .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s4)}
@@ -153,12 +160,14 @@ section{padding:var(--s6) 0 0}
 footer{background:var(--surface-2);padding:var(--s5) 0 var(--s6);margin-top:var(--s6)}
 footer .brand{display:block;margin:var(--s4) 0 var(--s3)}footer p{color:var(--ink-muted)}`;
 function btn(t,cls=""){return t?`<span class="btnw"><button class="btn shape-s ${cls}">${esc(t)}</button><i class="ln f"></i></span>`:""}
+function artPlaceholder(dots){const dd=dots?`<span class="artdots">${Array.from({length:dots}).map((_,i)=>`<i${i===0?' class="on"':""}></i>`).join("")}</span>`:"";
+  return `<span class="artph"><svg class="artx" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="0" y1="0" x2="100" y2="100"/><line x1="100" y1="0" x2="0" y2="100"/></svg><svg class="arti" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><circle cx="8.5" cy="10" r="1.5"/><path d="M3 16l5-5 4 4 3-3 6 6"/></svg>${dd}</span>`}
 function heroHtml(sp){const h=sp.hero;const ey=h.eyebrow?`<div class="ey lbl">${esc(h.eyebrow)}</div>`:"";
   const acts=`<div class="acts">${btn(h.cta)}${btn(h.secondary_cta,"sec")}</div>`;const sub=h.sub?`<p class="sub">${esc(h.sub)}</p>`:"";
-  if(h.layout==="offset")return `<div class="hero h-offset"><div class="wrap grid"><div class="t">${ey}<h1>${esc(h.headline)}</h1></div><i class="blk k1 shape-l"><b class="pat"></b></i><div class="aside">${sub}${acts}</div></div></div>`;
-  if(h.layout==="stacked")return `<div class="hero h-stacked"><div class="wrap">${ey}<h1>${esc(h.headline)}</h1><i class="ln"></i><div class="row3"><div>${sub}</div><div>${acts}</div><div class="sw"><i class="k1 shape-s"><b class="pat"></b></i><i class="k2 shape-s"></i><i class="k3 shape-s"></i></div></div></div></div>`;
-  if(h.layout==="banded")return `<div class="hero h-banded"><div class="wrap"><div class="band"><i class="k1 shape-l"><b class="pat"></b></i><i class="k2 shape-l"></i><i class="k3 shape-l"><b class="pat"></b></i><i class="k4 shape-l"></i></div>${ey}<h1>${esc(h.headline)}</h1>${sub}${acts}</div></div>`;
-  const side=c=>`<div class="side ${c} shape-l"><i class="k1"><b class="pat"></b></i><i class="k2"></i><i class="k3"></i><i class="k4"></i></div>`;
+  if(h.layout==="offset")return `<div class="hero h-offset"><div class="wrap grid"><div class="t">${ey}<h1>${esc(h.headline)}</h1></div><i class="blk shape-l">${artPlaceholder(3)}</i><div class="aside">${sub}${acts}</div></div></div>`;
+  if(h.layout==="stacked")return `<div class="hero h-stacked"><div class="wrap">${ey}<h1>${esc(h.headline)}</h1><i class="ln"></i><div class="row3"><div>${sub}</div><div>${acts}</div><i class="sw-ph shape-s">${artPlaceholder(3)}</i></div></div></div>`;
+  if(h.layout==="banded")return `<div class="hero h-banded"><div class="wrap"><i class="band-ph shape-l">${artPlaceholder(4)}</i>${ey}<h1>${esc(h.headline)}</h1>${sub}${acts}</div></div>`;
+  const side=c=>`<i class="side ${c} shape-l">${artPlaceholder()}</i>`;
   return `<div class="hero h-centered"><div class="wrap" style="position:relative">${side("l")}${side("r")}<div class="mid">${ey}<h1>${esc(h.headline)}</h1>${sub}${acts}</div></div></div>`}
 function siteBody(sp){const s=sp.site;
   const feats=s.features.map((f,i)=>`<div class="panel shape-l">${i===0?`<div class="opening shape-s"><i class="k1"><b class="pat"></b></i><i class="k2"></i><i class="k3"></i></div>`:""}<h3>${esc(f.title)}</h3><p>${esc(f.body)}</p><i class="ln"></i><span class="go lbl">${i===0?"Read more":"Details"}</span></div>`).join("");
