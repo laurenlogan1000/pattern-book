@@ -6,17 +6,8 @@ const MAX_PHOTOS=6;
 const ls=k=>{try{return localStorage.getItem(k)||""}catch{return ""}};
 const lsSet=(k,v)=>{try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch{}};
 const S={view:"library",entries:[],current:null,theme:"a",tab:"site",vp:"fit",files:[],anchor:0,brief:"",revise:"",busy:false,stage:-1,thinking:false,err:"",note:"",
-  dbState:"loading",dbErr:"",delArm:false,name:ls("pb-name"),pass:ls("pb-pass"),cfg:{passcodeRequired:false}};
-let ctl=null,skin=null,skinSet=false;
-
-/* ---------- the app's own skin, borrowed from the library ---------- */
-function applySkin(entries){if(skinSet||!entries.length)return;skinSet=true;
-  const day=Math.floor(Date.now()/864e5);const sp=entries[day%entries.length].spec;const c=sp.colors,t=sp.type;
-  const roles=[["ground","bg"],["surface","panel"],["ink","ink"],["ink-muted","muted"],["action","accent"],["action-ink","accent-ink"],["signal","warn"],["success","good"],["line","rule"]];
-  const vars=th=>roles.map(([r,v])=>`--${v}:${c[r][th]}`).join(";")+`;--f-display:${fstack(t.display.family,t.display.generic)};--f-body:${fstack(t.body.family,t.body.generic)}`;
-  let st=document.getElementById("skin");if(!st){st=document.createElement("style");st.id="skin";document.head.appendChild(st)}
-  st.textContent=`:root{${vars("a")}}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${vars("b")}}}:root[data-theme="dark"]{${vars("b")}}`;
-  ensureFonts([t.display.family,t.body.family]);skin={name:sp.name}}
+  dbState:"loading",dbErr:"",delArm:false,name:ls("pb-name"),pass:ls("pb-pass"),cfg:{passcodeRequired:false},urlDraft:"",urlBusy:false,urlErr:""};
+let ctl=null;
 
 /* ---------- API ---------- */
 const ERR={passcode:"That passcode didn't work. Check it and try again.",rate_limited:"This site has reached its limit for now. Try again later.",too_large:"Those photos are too large together. Use fewer or smaller ones.",
@@ -47,7 +38,6 @@ async function claude(body,{signal,onText,onThinking}={}){let r;
   if(stop==="max_tokens")throw {code:"truncated"};
   return parseJson(text)}
 async function load(){try{const r=await api("/api/systems");S.entries=(r.systems||[]).map(v=>({...v,thumbs:(v.thumbs||[]).filter(t=>typeof t==="string"&&t.startsWith("data:image/jpeg;base64,")),spec:normalize(v.spec)}));S.dbState="ok";
-    applySkin(S.entries);
     if(S.current?.id){const c=S.entries.find(e=>e.id===S.current.id);if(c)S.current=c}}
   catch(e){S.dbState="none";S.dbErr=errText(e)}
   if(!(S.busy&&S.view==="new"))render()}
@@ -55,6 +45,15 @@ async function load(){try{const r=await api("/api/systems");S.entries=(r.systems
 /* ---------- images ---------- */
 async function scaled(file,side,type,q){const bmp=await createImageBitmap(file);const k=Math.min(1,side/Math.max(bmp.width,bmp.height));const cv=document.createElement("canvas");cv.width=Math.round(bmp.width*k);cv.height=Math.round(bmp.height*k);cv.getContext("2d").drawImage(bmp,0,0,cv.width,cv.height);return cv.toDataURL(type,q)}
 async function forClaude(file){const url=await scaled(file,1568,"image/jpeg",.86);return {media_type:"image/jpeg",data:url.split(",")[1]}}
+async function addFromUrl(){const raw=S.urlDraft.trim();if(!raw||S.urlBusy||S.files.length>=MAX_PHOTOS)return;
+  let u;try{u=new URL(raw)}catch{S.urlErr="That doesn't look like a URL.";render();return}
+  S.urlBusy=true;S.urlErr="";render();
+  try{const r=await fetch("/api/fetch-image?url="+encodeURIComponent(u.href),{headers:S.pass?{"x-passcode":S.pass}:{}});
+    if(!r.ok){let m="";try{m=(await r.json()).error||""}catch{}throw new Error(r.status===401?"That passcode didn't work.":m||"Couldn't fetch that image.")}
+    const blob=await r.blob();if(!/^image\/(jpeg|png|webp)$/.test(blob.type))throw new Error("That URL isn't a JPEG, PNG or WebP image.");
+    S.files.push({file:blob,url:URL.createObjectURL(blob)});S.urlDraft=""}
+  catch(e){S.urlErr=e.message||"Couldn't fetch that image."}
+  finally{S.urlBusy=false;render()}}
 
 /* ---------- views ---------- */
 function coverHtml(e){const sp=e.spec;const c=sp.colors;const vars=ROLES.map(r=>`--${r}:${c[r].a}`).join(";");
@@ -65,8 +64,7 @@ function vLibrary(){let body;
   else if(S.dbState==="none")body=`<div class="empty"><h2>The library didn't load.</h2><p>${esc(S.dbErr)}</p><button class="t-btn ghost" data-act="reload">Try again</button></div>`;
   else if(!S.entries.length)body=`<div class="empty"><h2>No systems yet.</h2><p>Start with one photo or a set of them: a place, a material, a product, a working floor. Each run is kept here.</p><button class="t-btn" data-act="new">Make the first one</button></div>`;
   else body=`<div class="lib">${S.entries.map(e=>`<button class="card" data-act="open" data-id="${esc(e.id)}">${coverHtml(e)}<span class="meta"><span class="tl">${esc(e.spec.tagline)}</span><span class="thumbs">${(e.thumbs||[]).slice(0,6).map(t=>`<img src="${t}" alt="">`).join("")}</span><span class="muted sm">${whoWhen(e)}</span></span></button>`).join("")}</div>`;
-  const credit=skin?`<p class="muted sm skin-credit">Today's look is on loan from <b>${esc(skin.name)}</b>.</p>`:"";
-  return `<header class="bar"><div><h1 class="t-title">Pattern Book</h1><p class="muted">Photos in, design systems out. Every run is kept here.</p></div><button class="t-btn" data-act="new">New system</button></header>${credit}${body}`}
+  return `<header class="bar"><div><h1 class="t-title">Pattern Book</h1><p class="muted">Photos in, design systems out. Every run is kept here.</p></div><button class="t-btn" data-act="new">New system</button></header>${body}`}
 function vNew(){const th=S.files.map((f,i)=>`<div class="ph ${S.anchor===i+1?"is-anchor":""}"><button class="ph-img" data-act="anchor" data-i="${i}" aria-pressed="${S.anchor===i+1}" aria-label="Photo ${i+1}${S.anchor===i+1?", anchor":""}. Tap to ${S.anchor===i+1?"unset":"set as"} anchor"><img src="${f.url}" alt=""></button><span class="ph-cap"><span>${i+1}${S.anchor===i+1?" · Anchor":""}</span>${S.busy?"":`<button class="x" data-act="rm" data-i="${i}" aria-label="Remove photo ${i+1}">Remove</button>`}</span></div>`).join("");
   const pct=Math.round(((S.stage<0?0:S.stage+1)/STAGES.length)*100)||6;
   const prog=S.busy?`<div class="prog" aria-live="polite"><p class="prog-head">Turning your photos into a unique design system.</p><div class="prog-bar"><i style="width:${pct}%"></i></div><p class="muted sm" id="pmsg">${S.stage>=0?"Writing the system. A full run takes one to three minutes.":S.thinking?"Claude is studying the photos. This part is silent and can take a minute or two.":"Sending the photos."}</p><button class="t-btn ghost" data-act="stop">Stop</button></div>`:"";
@@ -74,7 +72,8 @@ function vNew(){const th=S.files.map((f,i)=>`<div class="ph ${S.anchor===i+1?"is
   return `<header class="bar"><button class="back" data-act="lib">Library</button></header>
 <h1 class="t-title">New system</h1>
 <div class="step"><h2 class="t-h2">Photos</h2><p class="muted">One photo works. Several work better when they share a subject: a site, a product line, an operation. Up to ${MAX_PHOTOS}. Tap a photo to make it the anchor, or leave it to Claude.</p>
-<div class="phs">${th}${S.files.length<MAX_PHOTOS&&!S.busy?`<label class="drop"><input type="file" accept="image/jpeg,image/png,image/webp" multiple data-act="files"><span>Add photos</span></label>`:""}</div></div>
+<div class="phs">${th}${S.files.length<MAX_PHOTOS&&!S.busy?`<label class="drop"><input type="file" accept="image/jpeg,image/png,image/webp" multiple data-act="files"><span>Add photos</span></label>`:""}</div>
+${S.files.length<MAX_PHOTOS&&!S.busy?`<div class="urlrow"><label class="sr" for="imgurl">Image URL</label><input id="imgurl" type="url" placeholder="Or paste an image URL, e.g. from a Pinterest pin" value="${esc(S.urlDraft)}" ${S.urlBusy?"disabled":""}><button class="t-btn ghost" data-act="addurl" ${S.urlBusy?"disabled":""}>${S.urlBusy?"Fetching…":"Add"}</button></div>${S.urlErr?`<p class="warn sm">${esc(S.urlErr)}</p>`:""}`:""}</div>
 <div class="step"><h2 class="t-h2">Brief <span class="muted">(optional)</span></h2><label class="sr" for="brief">Brief</label><textarea id="brief" rows="3" placeholder="What is it for, and who is it for? For example: a booking site for a Garden District house tour." ${S.busy?"disabled":""}>${esc(S.brief)}</textarea></div>
 <div class="step fields"><div><label for="nm">Your name <span class="muted">(shown on the entry)</span></label><input id="nm" autocomplete="name" value="${esc(S.name)}" ${S.busy?"disabled":""}></div>
 ${needPass?`<div><label for="pw">Passcode</label><input id="pw" type="password" autocomplete="current-password" value="${esc(S.pass)}" ${S.busy?"disabled":""}></div>`:""}</div>
@@ -152,12 +151,15 @@ document.addEventListener("click",async ev=>{const a=ev.target.closest("[data-ac
   else if(act==="revise")revise();
   else if(act==="stop")ctl?.abort();
   else if(act==="del")remove();
+  else if(act==="addurl")addFromUrl();
   else if(act.startsWith("x-"))exportIt(act)});
 document.addEventListener("input",ev=>{const t=ev.target;
   if(t.id==="brief")S.brief=t.value;
   else if(t.id==="nm"){S.name=t.value.slice(0,40);lsSet("pb-name",S.name.trim())}
   else if(t.id==="pw"){const had=!!S.pass;S.pass=t.value;lsSet("pb-pass",S.pass);if(had!==!!S.pass&&S.view==="new")render()}
-  else if(t.id==="rev"){const had=!!S.revise.trim();S.revise=t.value;if(had!==!!S.revise.trim())render()}});
+  else if(t.id==="rev"){const had=!!S.revise.trim();S.revise=t.value;if(had!==!!S.revise.trim())render()}
+  else if(t.id==="imgurl")S.urlDraft=t.value});
+document.addEventListener("keydown",ev=>{if(ev.target.id==="imgurl"&&ev.key==="Enter"){ev.preventDefault();addFromUrl()}});
 document.addEventListener("change",ev=>{if(ev.target.dataset?.act!=="files")return;
   for(const f of ev.target.files){if(S.files.length>=MAX_PHOTOS)break;if(!/^image\/(jpeg|png|webp)$/.test(f.type))continue;S.files.push({file:f,url:URL.createObjectURL(f)})}render()});
 
