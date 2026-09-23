@@ -7,7 +7,7 @@ pages_build_output_dir = "public"
 [[d1_databases]]
 binding = "DB"
 database_name = "pattern-book"
-database_id = "REPLACE_WITH_YOUR_DATABASE_ID"
+database_id = "669a4531-2f0d-4adf-8c31-75589773ddb2"
 
 [vars]
 MODEL = "claude-opus-5-5"
