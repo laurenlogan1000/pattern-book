@@ -7,7 +7,16 @@ const ls=k=>{try{return localStorage.getItem(k)||""}catch{return ""}};
 const lsSet=(k,v)=>{try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch{}};
 const S={view:"library",entries:[],current:null,theme:"a",tab:"site",vp:"fit",files:[],anchor:0,brief:"",revise:"",busy:false,stage:-1,thinking:false,err:"",note:"",
   dbState:"loading",dbErr:"",delArm:false,name:ls("pb-name"),pass:ls("pb-pass"),cfg:{passcodeRequired:false}};
-let ctl=null;
+let ctl=null,skin=null,skinSet=false;
+
+/* ---------- the app's own skin, borrowed from the library ---------- */
+function applySkin(entries){if(skinSet||!entries.length)return;skinSet=true;
+  const day=Math.floor(Date.now()/864e5);const sp=entries[day%entries.length].spec;const c=sp.colors,t=sp.type;
+  const roles=[["ground","bg"],["surface","panel"],["ink","ink"],["ink-muted","muted"],["action","accent"],["action-ink","accent-ink"],["signal","warn"],["success","good"],["line","rule"]];
+  const vars=th=>roles.map(([r,v])=>`--${v}:${c[r][th]}`).join(";")+`;--f-display:${fstack(t.display.family,t.display.generic)};--f-body:${fstack(t.body.family,t.body.generic)}`;
+  let st=document.getElementById("skin");if(!st){st=document.createElement("style");st.id="skin";document.head.appendChild(st)}
+  st.textContent=`:root{${vars("a")}}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${vars("b")}}}:root[data-theme="dark"]{${vars("b")}}`;
+  ensureFonts([t.display.family,t.body.family]);skin={name:sp.name}}
 
 /* ---------- API ---------- */
 const ERR={passcode:"That passcode didn't work. Check it and try again.",rate_limited:"This site has reached its limit for now. Try again later.",too_large:"Those photos are too large together. Use fewer or smaller ones.",
@@ -38,6 +47,7 @@ async function claude(body,{signal,onText,onThinking}={}){let r;
   if(stop==="max_tokens")throw {code:"truncated"};
   return parseJson(text)}
 async function load(){try{const r=await api("/api/systems");S.entries=(r.systems||[]).map(v=>({...v,thumbs:(v.thumbs||[]).filter(t=>typeof t==="string"&&t.startsWith("data:image/jpeg;base64,")),spec:normalize(v.spec)}));S.dbState="ok";
+    applySkin(S.entries);
     if(S.current?.id){const c=S.entries.find(e=>e.id===S.current.id);if(c)S.current=c}}
   catch(e){S.dbState="none";S.dbErr=errText(e)}
   if(!(S.busy&&S.view==="new"))render()}
@@ -55,9 +65,11 @@ function vLibrary(){let body;
   else if(S.dbState==="none")body=`<div class="empty"><h2>The library didn't load.</h2><p>${esc(S.dbErr)}</p><button class="t-btn ghost" data-act="reload">Try again</button></div>`;
   else if(!S.entries.length)body=`<div class="empty"><h2>No systems yet.</h2><p>Start with one photo or a set of them: a place, a material, a product, a working floor. Each run is kept here.</p><button class="t-btn" data-act="new">Make the first one</button></div>`;
   else body=`<div class="lib">${S.entries.map(e=>`<button class="card" data-act="open" data-id="${esc(e.id)}">${coverHtml(e)}<span class="meta"><span class="tl">${esc(e.spec.tagline)}</span><span class="thumbs">${(e.thumbs||[]).slice(0,6).map(t=>`<img src="${t}" alt="">`).join("")}</span><span class="muted sm">${whoWhen(e)}</span></span></button>`).join("")}</div>`;
-  return `<header class="bar"><div><h1 class="t-title">Pattern Book</h1><p class="muted">Photos in, design systems out. Every run is kept here.</p></div><button class="t-btn" data-act="new">New system</button></header>${body}`}
+  const credit=skin?`<p class="muted sm skin-credit">Today's look is on loan from <b>${esc(skin.name)}</b>.</p>`:"";
+  return `<header class="bar"><div><h1 class="t-title">Pattern Book</h1><p class="muted">Photos in, design systems out. Every run is kept here.</p></div><button class="t-btn" data-act="new">New system</button></header>${credit}${body}`}
 function vNew(){const th=S.files.map((f,i)=>`<div class="ph ${S.anchor===i+1?"is-anchor":""}"><button class="ph-img" data-act="anchor" data-i="${i}" aria-pressed="${S.anchor===i+1}" aria-label="Photo ${i+1}${S.anchor===i+1?", anchor":""}. Tap to ${S.anchor===i+1?"unset":"set as"} anchor"><img src="${f.url}" alt=""></button><span class="ph-cap"><span>${i+1}${S.anchor===i+1?" · Anchor":""}</span>${S.busy?"":`<button class="x" data-act="rm" data-i="${i}" aria-label="Remove photo ${i+1}">Remove</button>`}</span></div>`).join("");
-  const prog=S.busy?`<div class="prog" aria-live="polite"><ol>${STAGES.map((s,i)=>`<li class="${i<S.stage?"done":i===S.stage?"now":""}">${s[1]}</li>`).join("")}</ol><p class="muted sm" id="pmsg">${S.stage>=0?"Writing the system. A full run takes one to three minutes.":S.thinking?"Claude is studying the photos. This part is silent and can take a minute or two.":"Sending the photos."}</p><button class="t-btn ghost" data-act="stop">Stop</button></div>`:"";
+  const pct=Math.round(((S.stage<0?0:S.stage+1)/STAGES.length)*100)||6;
+  const prog=S.busy?`<div class="prog" aria-live="polite"><p class="prog-head">Turning your photos into a unique design system.</p><div class="prog-bar"><i style="width:${pct}%"></i></div><p class="muted sm" id="pmsg">${S.stage>=0?"Writing the system. A full run takes one to three minutes.":S.thinking?"Claude is studying the photos. This part is silent and can take a minute or two.":"Sending the photos."}</p><button class="t-btn ghost" data-act="stop">Stop</button></div>`:"";
   const needPass=S.cfg.passcodeRequired;
   return `<header class="bar"><button class="back" data-act="lib">Library</button></header>
 <h1 class="t-title">New system</h1>
@@ -150,7 +162,7 @@ document.addEventListener("change",ev=>{if(ev.target.dataset?.act!=="files")retu
   for(const f of ev.target.files){if(S.files.length>=MAX_PHOTOS)break;if(!/^image\/(jpeg|png|webp)$/.test(f.type))continue;S.files.push({file:f,url:URL.createObjectURL(f)})}render()});
 
 function setStage(text){let s=-1;STAGES.forEach(([k],i)=>{if(text.includes('"'+k+'"'))s=i});if(s===S.stage)return;S.stage=s;
-  const ol=$(".prog ol");if(ol)[...ol.children].forEach((li,i)=>li.className=i<s?"done":i===s?"now":"");const p=$("#pmsg");if(p)p.textContent="Writing the system. A full run takes one to three minutes."}
+  const bar=$(".prog-bar i");if(bar)bar.style.width=Math.round(((s+1)/STAGES.length)*100)+"%";const p=$("#pmsg");if(p)p.textContent="Writing the system. A full run takes one to three minutes."}
 function onThinking(){if(S.thinking)return;S.thinking=true;const p=$("#pmsg");if(p&&S.stage<0)p.textContent="Claude is studying the photos. This part is silent and can take a minute or two."}
 function authFail(e){if(e?.code==="passcode"){S.pass="";lsSet("pb-pass","")}}
 async function generate(){if(S.busy||!S.files.length)return;S.busy=true;S.err="";S.stage=-1;S.thinking=false;render();ctl=new AbortController();
