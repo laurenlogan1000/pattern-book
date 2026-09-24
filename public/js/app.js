@@ -91,9 +91,9 @@ function vEntry(){const e=S.current;const sp=e.spec;
 <div class="tabs" role="tablist">${tabs}</div>${S.note?`<p class="ok-note" role="status">${esc(S.note)}</p>`:""}<div class="panel-w">${panel}</div>`}
 function vRevise(){const needPass=S.cfg.passcodeRequired;
   return `<div class="revise"><h2 class="t-h2">Revise</h2><p class="muted">Say what's off, the way you'd tell a designer. The system is rebuilt with everything else kept, and the previous version is saved.</p><label class="sr" for="rev">Feedback</label><textarea id="rev" rows="3" placeholder="The corner radius doesn't match the buttons. Borders feel like a template." ${S.busy?"disabled":""}>${esc(S.revise)}</textarea>
-${needPass&&!S.pass?`<div class="fields" style="margin-bottom:14px"><div><label for="pw">Passcode</label><input id="pw" type="password" autocomplete="current-password" value=""></div></div>`:""}
+${needPass?`<div class="fields" style="margin-bottom:14px"><div><label for="pw">Passcode</label><input id="pw" type="password" autocomplete="current-password" value="${esc(S.pass)}"></div></div>`:""}
 ${S.err?`<p class="warn" role="alert">${esc(S.err)}</p>`:""}
-${S.busy?`<div class="prog"><p class="muted sm">Revising. This takes one to two minutes.</p><button class="t-btn ghost" data-act="stop">Stop</button></div>`:`<button class="t-btn" data-act="revise" ${S.revise.trim()?"":"disabled"}>Revise</button>`}</div>`}
+${S.busy?`<div class="prog"><p class="muted sm">Revising. This takes one to two minutes.</p><button class="t-btn ghost" data-act="stop">Stop</button></div>`:`<button class="t-btn" data-act="revise" ${S.revise.trim()&&!(needPass&&!S.pass)?"":"disabled"}>Revise</button>`}</div>`}
 function vMethod(e){const sp=e.spec;const L=lint(sp);
   const ph=sp.photos.map(p=>{const t=(e.thumbs||[])[p.n-1];return `<div class="mrow">${t?`<img src="${t}" alt="">`:`<span class="nothumb"></span>`}<div><b>Photo ${p.n}${p.role?` · ${esc(p.role)}`:""}${sp.anchor===p.n?" (anchor)":""}</b><p>${esc(p.desc)}</p>${p.note?`<p class="muted sm">${esc(p.note)}</p>`:""}</div></div>`}).join("");
   const a=sp.audit;
@@ -157,7 +157,7 @@ document.addEventListener("click",async ev=>{const a=ev.target.closest("[data-ac
 document.addEventListener("input",ev=>{const t=ev.target;
   if(t.id==="brief")S.brief=t.value;
   else if(t.id==="nm"){S.name=t.value.slice(0,40);lsSet("pb-name",S.name.trim())}
-  else if(t.id==="pw"){const had=!!S.pass;S.pass=t.value;lsSet("pb-pass",S.pass);if(had!==!!S.pass&&S.view==="new")render()}
+  else if(t.id==="pw"){const had=!!S.pass;S.pass=t.value;lsSet("pb-pass",S.pass);if(had!==!!S.pass&&(S.view==="new"||S.view==="entry"))render()}
   else if(t.id==="rev"){const had=!!S.revise.trim();S.revise=t.value;if(had!==!!S.revise.trim())render()}
   else if(t.id==="imgurl")S.urlDraft=t.value});
 document.addEventListener("keydown",ev=>{if(ev.target.id==="imgurl"&&ev.key==="Enter"){ev.preventDefault();addFromUrl()}});
