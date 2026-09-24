@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS systems (
   author TEXT,
   thumbs TEXT NOT NULL DEFAULT '[]',
   spec TEXT NOT NULL,
-  last_feedback TEXT
+  last_feedback TEXT,
+  hero TEXT
 );
 CREATE INDEX IF NOT EXISTS systems_created ON systems (created_at DESC);
 

@@ -38,7 +38,7 @@ async function claude(body,{signal,onText,onThinking}={}){let r;
   if(stop==="max_tokens")throw {code:"truncated"};
   return parseJson(text)}
 async function load(){try{const r=await api("/api/systems");S.entries=(r.systems||[]).map(v=>({...v,thumbs:(v.thumbs||[]).filter(t=>typeof t==="string"&&t.startsWith("data:image/jpeg;base64,")),spec:normalize(v.spec)}));S.dbState="ok";
-    if(S.current?.id){const c=S.entries.find(e=>e.id===S.current.id);if(c)S.current=c}}
+    if(S.current?.id){const c=S.entries.find(e=>e.id===S.current.id);if(c)S.current={...c,hero:S.current.hero||c.hero}}}
   catch(e){S.dbState="none";S.dbErr=errText(e)}
   if(!(S.busy&&S.view==="new"))render()}
 
@@ -126,7 +126,7 @@ function render(){const root=$("#app");const sel=document.activeElement?.id;
   if(S.view==="entry"&&(S.tab==="site"||S.tab==="spec"))loadFrame();
   if(sel&&$("#"+sel)){const el=$("#"+sel);el.focus();try{if(el.value)el.setSelectionRange(el.value.length,el.value.length)}catch{}}}
 function loadFrame(){const fr=$("#fr");if(!fr)return;const sp=S.current.spec;
-  fr.srcdoc=S.tab==="spec"?specimenDoc(sp,S.theme):siteDoc(sp,S.theme);
+  fr.srcdoc=S.tab==="spec"?specimenDoc(sp,S.theme):siteDoc(sp,S.theme,S.current.hero);
   fr.onload=()=>{fit();try{fr.contentDocument.fonts.ready.then(fit)}catch{}setTimeout(fit,900)}}
 function fit(){const fr=$("#fr"),fw=$("#fw");if(!fr||!fw)return;let h=900;try{h=fr.contentDocument.documentElement.scrollHeight}catch{}
   if(S.tab==="site"&&S.vp==="desk"){const s=Math.min(1,fw.clientWidth/1280);fr.style.width="1280px";fr.style.height=h+"px";fr.style.transform=`scale(${s})`;fr.style.transformOrigin="0 0";
@@ -141,7 +141,8 @@ document.addEventListener("click",async ev=>{const a=ev.target.closest("[data-ac
   if(act==="new"){S.view="new";S.err="";render();scrollTo(0,0)}
   else if(act==="lib"){if(S.busy)ctl?.abort();S.view="library";S.current=null;S.err="";S.note="";render();scrollTo(0,0);load()}
   else if(act==="reload"){S.dbState="loading";render();load()}
-  else if(act==="open"){const e=S.entries.find(x=>x.id===a.dataset.id);if(e){S.current=e;S.view="entry";S.tab="site";S.theme="a";S.err="";S.note="";S.revise="";render();scrollTo(0,0)}}
+  else if(act==="open"){const id=a.dataset.id;const e=S.entries.find(x=>x.id===id);if(e){S.current=e;S.view="entry";S.tab="site";S.theme="a";S.err="";S.note="";S.revise="";render();scrollTo(0,0);
+    try{const full=await api("/api/systems/"+encodeURIComponent(id));if(S.current?.id===id&&full.hero){S.current={...S.current,hero:full.hero};if(S.tab==="site")loadFrame()}}catch{}}}
   else if(act==="tab"){S.tab=a.dataset.k;S.note="";S.err="";render()}
   else if(act==="theme"){S.theme=a.dataset.k;render()}
   else if(act==="vp"){S.vp=a.dataset.k;render()}
@@ -172,10 +173,12 @@ async function generate(){if(S.busy||!S.files.length)return;S.busy=true;S.err=""
     const raw=await claude({mode:"create",anchor:S.anchor,brief:S.brief.trim(),images},{signal:ctl.signal,onText:({text})=>setStage(text),onThinking});
     const spec=normalize(raw);let thumbs=[];
     for(const [side,q] of [[320,.72],[220,.6],[140,.5]]){thumbs=await Promise.all(files.map(f=>scaled(f,side,"image/jpeg",q).catch(()=>"")));if(thumbs.join("").length<220000)break}
+    const anchorFile=files[spec.anchor-1]||files[0];
+    const hero=anchorFile?await scaled(anchorFile,900,"image/jpeg",.72).catch(()=>""):"";
     const brief=S.brief.trim();let id=null;
-    try{const r=await api("/api/systems",{method:"POST",body:JSON.stringify({spec,thumbs,brief,author:S.name.trim()})});id=r.id}catch(e){authFail(e);S.note="Made, but not saved to the library. "+errText(e)}
+    try{const r=await api("/api/systems",{method:"POST",body:JSON.stringify({spec,thumbs,hero,brief,author:S.name.trim()})});id=r.id}catch(e){authFail(e);S.note="Made, but not saved to the library. "+errText(e)}
     S.files.forEach(f=>URL.revokeObjectURL(f.url));S.files=[];S.anchor=0;S.brief="";
-    S.current={id,name:spec.name,tagline:spec.tagline,createdAt:new Date().toISOString(),author:S.name.trim(),thumbs,spec,rev:1,brief};S.view="entry";S.tab="site";S.theme="a";scrollTo(0,0);load()}
+    S.current={id,name:spec.name,tagline:spec.tagline,createdAt:new Date().toISOString(),author:S.name.trim(),thumbs,spec,rev:1,brief,hero};S.view="entry";S.tab="site";S.theme="a";scrollTo(0,0);load()}
   catch(e){authFail(e);S.err=errText(e)}
   finally{S.busy=false;render()}}
 async function revise(){const e=S.current;if(S.busy||!S.revise.trim())return;S.busy=true;S.err="";render();ctl=new AbortController();

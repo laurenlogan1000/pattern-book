@@ -112,6 +112,8 @@ nav.top{display:flex;align-items:center;justify-content:space-between;gap:var(--
 .arti{position:absolute;top:50%;left:50%;width:15%;min-width:20px;max-width:34px;height:auto;transform:translate(-50%,-50%);opacity:.5}
 .arti rect,.arti path{fill:none;stroke:var(--line);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
 .arti circle{fill:var(--line)}
+.art-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.85)}
+.artph.has-img::after{content:"";position:absolute;inset:0;background:var(--action);opacity:.14;mix-blend-mode:multiply;pointer-events:none}
 .artdots{position:absolute;bottom:var(--s3);left:50%;transform:translateX(-50%);display:flex;gap:6px}
 .artdots i{width:6px;height:6px;background:var(--line);opacity:.35;display:block;border-radius:50%}
 .artdots i.on{opacity:.85}
@@ -160,20 +162,21 @@ section{padding:var(--s6) 0 0}
 footer{background:var(--surface-2);padding:var(--s5) 0 var(--s6);margin-top:var(--s6)}
 footer .brand{display:block;margin:var(--s4) 0 var(--s3)}footer p{color:var(--ink-muted)}`;
 function btn(t,cls=""){return t?`<span class="btnw"><button class="btn shape-s ${cls}">${esc(t)}</button><i class="ln f"></i></span>`:""}
-function artPlaceholder(dots){const dd=dots?`<span class="artdots">${Array.from({length:dots}).map((_,i)=>`<i${i===0?' class="on"':""}></i>`).join("")}</span>`:"";
+function artPlaceholder(dots,img){const dd=dots?`<span class="artdots">${Array.from({length:dots}).map((_,i)=>`<i${i===0?' class="on"':""}></i>`).join("")}</span>`:"";
+  if(img)return `<span class="artph has-img"><img class="art-img" src="${esc(img)}" alt=""/>${dd}</span>`;
   return `<span class="artph"><svg class="artx" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="0" y1="0" x2="100" y2="100"/><line x1="100" y1="0" x2="0" y2="100"/></svg><svg class="arti" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><circle cx="8.5" cy="10" r="1.5"/><path d="M3 16l5-5 4 4 3-3 6 6"/></svg>${dd}</span>`}
-function heroHtml(sp){const h=sp.hero;const ey=h.eyebrow?`<div class="ey lbl">${esc(h.eyebrow)}</div>`:"";
+function heroHtml(sp,heroImg){const h=sp.hero;const ey=h.eyebrow?`<div class="ey lbl">${esc(h.eyebrow)}</div>`:"";
   const acts=`<div class="acts">${btn(h.cta)}${btn(h.secondary_cta,"sec")}</div>`;const sub=h.sub?`<p class="sub">${esc(h.sub)}</p>`:"";
-  if(h.layout==="offset")return `<div class="hero h-offset"><div class="wrap grid"><div class="t">${ey}<h1>${esc(h.headline)}</h1></div><i class="blk shape-l">${artPlaceholder(3)}</i><div class="aside">${sub}${acts}</div></div></div>`;
-  if(h.layout==="stacked")return `<div class="hero h-stacked"><div class="wrap">${ey}<h1>${esc(h.headline)}</h1><i class="ln"></i><div class="row3"><div>${sub}</div><div>${acts}</div><i class="sw-ph shape-s">${artPlaceholder(3)}</i></div></div></div>`;
-  if(h.layout==="banded")return `<div class="hero h-banded"><div class="wrap"><i class="band-ph shape-l">${artPlaceholder(4)}</i>${ey}<h1>${esc(h.headline)}</h1>${sub}${acts}</div></div>`;
+  if(h.layout==="offset")return `<div class="hero h-offset"><div class="wrap grid"><div class="t">${ey}<h1>${esc(h.headline)}</h1></div><i class="blk shape-l">${artPlaceholder(3,heroImg)}</i><div class="aside">${sub}${acts}</div></div></div>`;
+  if(h.layout==="stacked")return `<div class="hero h-stacked"><div class="wrap">${ey}<h1>${esc(h.headline)}</h1><i class="ln"></i><div class="row3"><div>${sub}</div><div>${acts}</div><i class="sw-ph shape-s">${artPlaceholder(3,heroImg)}</i></div></div></div>`;
+  if(h.layout==="banded")return `<div class="hero h-banded"><div class="wrap"><i class="band-ph shape-l">${artPlaceholder(4,heroImg)}</i>${ey}<h1>${esc(h.headline)}</h1>${sub}${acts}</div></div>`;
   const side=c=>`<i class="side ${c} shape-l">${artPlaceholder()}</i>`;
   return `<div class="hero h-centered"><div class="wrap" style="position:relative">${side("l")}${side("r")}<div class="mid">${ey}<h1>${esc(h.headline)}</h1>${sub}${acts}</div></div></div>`}
-function siteBody(sp){const s=sp.site;
+function siteBody(sp,heroImg){const s=sp.site;
   const feats=s.features.map((f,i)=>`<div class="panel shape-l">${i===0?`<div class="opening shape-s"><i class="k1"><b class="pat"></b></i><i class="k2"></i><i class="k3"></i></div>`:""}<h3>${esc(f.title)}</h3><p>${esc(f.body)}</p><i class="ln"></i><span class="go lbl">${i===0?"Read more":"Details"}</span></div>`).join("");
   const rows=s.list.rows.map(r=>`<div class="r">${r.map(c=>`<span>${esc(c)}</span>`).join("")}</div>`).join("");
   return `<div class="wrap"><nav class="top"><span class="brand">${esc(s.brand)}</span><span class="links lbl">${s.nav.map(n=>`<span>${esc(n)}</span>`).join("")}</span>${btn(sp.hero.secondary_cta||sp.hero.cta,"sec")}</nav><i class="ln"></i></div>
-${heroHtml(sp)}
+${heroHtml(sp,heroImg)}
 <section><div class="wrap"><i class="ln"></i><div class="feats" style="margin-top:var(--s5)">${feats}</div></div></section>
 <section><div class="wrap formgrid"><div><h2>${esc(s.form.title)}</h2>${s.form.body?`<p>${esc(s.form.body)}</p>`:""}</div><div>
 <div class="field"><label class="lbl" for="f1">${esc(s.form.label)}</label><input id="f1" class="shape-s" placeholder="${esc(s.form.placeholder)}"><i class="ln"></i></div>
@@ -183,7 +186,7 @@ ${rows?`<section class="list"><div class="wrap"><div class="sec-h"><h2>${esc(s.l
 <footer><div class="wrap"><i class="ln"></i><span class="brand">${esc(s.brand)}</span><p>${esc(s.footer||sp.tagline)}</p></div></footer>`}
 function docShell(sp,theme,body,extraCss=""){const t=sp.type;
   return `<!doctype html><html data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(sp.name)}</title>${fontLinks([t.display.family,t.body.family,t.label.family])}<style>${varsCss(sp)}${SITE_CSS}${motifCss(sp)}${extraCss}</style></head><body>${body}</body></html>`}
-function siteDoc(sp,theme){return docShell(sp,theme,siteBody(sp))}
+function siteDoc(sp,theme,heroImg){return docShell(sp,theme,siteBody(sp,heroImg))}
 const SPEC_CSS=`.spec{padding:var(--s5) 0 var(--s6)}.spec h2{margin:var(--s6) 0 var(--s4)}.spec h2:first-child{margin-top:0}
 .sw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:var(--s4)}
 .sw-c .chip{height:88px;margin-bottom:var(--s2)}.sw-c b{display:block;font-weight:600}.sw-c small{display:block;color:var(--ink-muted);font-size:13px;line-height:1.4}
